@@ -1,4 +1,3 @@
-#Criar dados sintéticos para treino da IA
 import pandas as pd
 import random
 from datetime import datetime
@@ -8,11 +7,7 @@ import metabolismo
 CONFIG = {
     'samples': 5000,
     'output': 'dataset_glicemia_treino.csv',
-    'foods': [
-        "Arroz, integral, cozido", "Feijão, carioca, cozido", 
-        "Pão, de trigo, francês", "Banana, prata, crua",
-        "Leite, de vaca, integral", "Maçã, Fuji, com casca, crua"
-    ]
+    'foods': ["Arroz, integral, cozido", "Feijão, carioca, cozido", "Pão, de trigo, francês", "Banana, prata, crua"]
 }
 
 def gerar_dataset():
@@ -30,14 +25,18 @@ def gerar_dataset():
         min_atras = random.randint(30, 240) if tem_insulina else 0
         hora_fake = (datetime.now() - pd.Timedelta(minutes=min_atras)).strftime("%H:%M")
 
-        carbos = nutricao.get_carboidratos(alimento, gramas)
-        if carbos is None: continue
+        # Busca dados no Backend Nutricional
+        detalhes = nutricao.get_detalhes_alimento(alimento)
+        if not detalhes: continue
+        
+        carbos = (detalhes['carbo_100g'] / 100) * gramas
 
+        # Busca cálculo no Backend Metabólico
         iob = metabolismo.calcular_iob(dose, hora_fake) if tem_insulina else 0.0
         
-        # Ruído estocástico (5%)
+        # Gera Target com pequeno ruído
         ruido = random.uniform(0.95, 1.05)
-        target = metabolismo.prever_glicemia(glicemia_ini, peso, carbos, iob) * ruido
+        target = metabolismo.prever_glicemia_pontual(glicemia_ini, peso, carbos, iob) * ruido
 
         dados.append({
             'peso': peso,
